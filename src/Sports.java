@@ -1,172 +1,230 @@
 import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Facade class for the research evaluation system
- *
- */
 public class Sports {
+    private Set<String> activities = new TreeSet<>();
+    private Map<String, Set<String>> categoryToActivities = new HashMap<>();
+    private Map<String, Set<String>> activityToCategories = new HashMap<>();
+    private Map<String, Product> products = new TreeMap<>();
+    private Map<String, List<Rating>> productRatings = new HashMap<>();
 
-    //R1
-    /**
-     * Define the activities types treated in the portal.
-     * The method can be invoked multiple times to add different activities.
-     *
-     * @param actvities names of the activities
-     * @throws SportsException thrown if no activity is provided
-     */
-    public void defineActivities (String... activities) throws SportsException {}
+    private class Product {
+        String name;
+        String activity;
+        String category;
 
+        public Product(String name, String activity, String category) {
+            this.name = name;
+            this.activity = activity;
+            this.category = category;
+        }
+    }
 
-    /**
-     * Retrieves the names of the defined activities.
-     *
-     * @return activities names sorted alphabetically
-     */
+    private class Rating {
+        String productName;
+        String userName;
+        int stars;
+        String comment;
+
+        public Rating(String productName, String userName, int stars, String comment) {
+            this.productName = productName;
+            this.userName = userName;
+            this.stars = stars;
+            this.comment = comment;
+        }
+
+        @Override
+        public String toString() {
+            return stars + " : " + comment;
+        }
+    }
+
+    public void defineActivities(String... activities) throws SportsException {
+        if (activities.length == 0) {
+            throw new SportsException("No activities provided");
+        }
+        
+        for (String activity : activities) {
+            this.activities.add(activity);
+            if (!activityToCategories.containsKey(activity)) {
+                activityToCategories.put(activity, new TreeSet<>());
+            }
+        }
+    }
+
     public List<String> getActivities() {
-        return null;
+        return new ArrayList<>(activities);
     }
 
+    public void addCategory(String name, String... linkedActivities) throws SportsException {
+        for (String activity : linkedActivities) {
+            if (!activities.contains(activity)) {
+                throw new SportsException("Activity " + activity + " does not exist");
+            }
+        }
 
-    /**
-     * Add a new category of sport products and the linked activities
-     *
-     * @param name name of the new category
-     * @param activities reference activities for the category
-     * @throws SportsException thrown if any of the specified activity does not exist
-     */
-    public void addCategory(String name, String... linkedActivities) throws SportsException {}
+        Set<String> linkedActivitiesSet = new HashSet<>(Arrays.asList(linkedActivities));
+        categoryToActivities.put(name, linkedActivitiesSet);
 
-    /**
-     * Retrieves number of categories.
-     *
-     * @return categories count
-     */
+        for (String activity : linkedActivities) {
+            activityToCategories.get(activity).add(name);
+        }
+    }
+
     public int countCategories() {
-        return 0;
+        return categoryToActivities.size();
     }
 
-    /**
-     * Retrieves all the categories linked to a given activity.
-     *
-     * @param activity the activity of interest
-     * @return list of categories (sorted alphabetically)
-     */
     public List<String> getCategoriesForActivity(String activity) {
-        return null;
+        if (!activityToCategories.containsKey(activity)) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(activityToCategories.get(activity));
     }
 
-    //R2
-    /**
-     * Add a research group and the relative disciplines.
-     *
-     * @param name name of the research group
-     * @param disciplines list of disciplines
-     * @throws SportsException thrown in case of duplicate name
-     */
-    public void addProduct(String name, String activityName, String categoryName) throws SportsException {}
-
-    /**
-     * Retrieves the list of products for a given category.
-     * The list is sorted alphabetically.
-     *
-     * @param categoryName name of the category
-     * @return list of products
-     *
-     *     Map <String, Product> products = new TreeMap<>();
-     */
-    public List<String> getProductsForCategory(String categoryName){
-        return  null;
+    public void addProduct(String name, String activityName, String categoryName) throws SportsException {
+        if (products.containsKey(name)) {
+            throw new SportsException("Product " + name + " already exists");
+        }
+        
+        Product product = new Product(name, activityName, categoryName);
+        products.put(name, product);
+        
+        productRatings.putIfAbsent(name, new ArrayList<>());
     }
 
-    /**
-     * Retrieves the list of products for a given activity.
-     * The list is sorted alphabetically.
-     *
-     * @param activityName name of the activity
-     * @return list of products
-     */
-    public List<String> getProductsForActivity(String activityName){
-        return null;
-    }
-    /**
-     * Retrieves the list of products for a given activity and a set of categories
-     * The list is sorted alphabetically.
-     *
-     * @param activityName name of the activity
-     * @param categoryNames names of the categories
-     * @return list of products
-     */
-    public List<String> getProducts(String activityName, String... categoryNames){
-        return null;
+    public List<String> getProductsForCategory(String categoryName) {
+        return products.values().stream()
+                .filter(p -> p.category.equals(categoryName))
+                .map(p -> p.name)
+                .sorted()
+                .collect(Collectors.toList());
     }
 
-    //R3
-    /**
-     * Add a new product rating
-     *
-     * @param productName name of the product
-     * @param userName name of the user submitting the rating
-     * @param numStars score of the rating in stars
-     * @param comment comment for the rating
-     * @throws SportsException thrown numStars is not correct
-     */
-    public void addRating(String productName, String userName, int numStars, String comment) throws SportsException {}
+    public List<String> getProductsForActivity(String activityName) {
+        return products.values().stream()
+                .filter(p -> p.activity.equals(activityName))
+                .map(p -> p.name)
+                .sorted()
+                .collect(Collectors.toList());
+    }
 
-    /**
-     * Retrieves the ratings for the given product.
-     * The ratings are sorted by descending number of stars.
-     *
-     * @param productName name of the product
-     * @return list of ratings sorted by stars
-     */
+    public List<String> getProducts(String activityName, String... categoryNames) {
+        Set<String> categories = new HashSet<>(Arrays.asList(categoryNames));
+        
+        return products.values().stream()
+                .filter(p -> p.activity.equals(activityName) && categories.contains(p.category))
+                .map(p -> p.name)
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    public void addRating(String productName, String userName, int numStars, String comment) throws SportsException {
+        if (numStars < 0 || numStars > 5) {
+            throw new SportsException("Star rating must be between 0 and 5");
+        }
+        
+        Rating rating = new Rating(productName, userName, numStars, comment);
+        
+        productRatings.putIfAbsent(productName, new ArrayList<>());
+        productRatings.get(productName).add(rating);
+    }
+
     public List<String> getRatingsForProduct(String productName) {
-        return null;
+        if (!productRatings.containsKey(productName)) {
+            return new ArrayList<>();
+        }
+        
+        return productRatings.get(productName).stream()
+                .sorted((r1, r2) -> Integer.compare(r2.stars, r1.stars))
+                .map(Rating::toString)
+                .collect(Collectors.toList());
     }
 
-
-    //R4
-    /**
-     * Returns the average number of stars of the rating for the given product.
-     *
-     *
-     * @param productName name of the product
-     * @return average rating
-     */
-    public double getStarsOfProduct (String productName) {
-        return 0;
+    public double getStarsOfProduct(String productName) {
+        if (!productRatings.containsKey(productName) || productRatings.get(productName).isEmpty()) {
+            return 0.0;
+        }
+        
+        List<Rating> ratings = productRatings.get(productName);
+        double sum = ratings.stream().mapToInt(r -> r.stars).sum();
+        return sum / ratings.size();
     }
 
-    /**
-     * Computes the overall average stars of all ratings
-     *
-     * @return average stars
-     */
     public double averageStars() {
-        return 0;
+        long totalRatings = productRatings.values().stream()
+                .mapToLong(List::size)
+                .sum();
+                
+        if (totalRatings == 0) {
+            return 0.0;
+        }
+        
+        double totalStars = productRatings.values().stream()
+                .flatMap(List::stream)
+                .mapToInt(r -> r.stars)
+                .sum();
+                
+        return totalStars / totalRatings;
     }
 
-    //R5 Statistiche
-    /**
-     * For each activity return the average stars of the entered ratings.
-     *
-     * Activity names are sorted alphabetically.
-     *
-     * @return the map associating activity name to average stars
-     */
     public SortedMap<String, Double> starsPerActivity() {
-        return null;
+        SortedMap<String, Double> result = new TreeMap<>();
+        
+        Map<String, List<String>> productsByActivity = new HashMap<>();
+        for (Product product : products.values()) {
+            productsByActivity.putIfAbsent(product.activity, new ArrayList<>());
+            productsByActivity.get(product.activity).add(product.name);
+        }
+        
+        for (Map.Entry<String, List<String>> entry : productsByActivity.entrySet()) {
+            String activity = entry.getKey();
+            List<String> activityProducts = entry.getValue();
+            
+            int totalStars = 0;
+            int ratingCount = 0;
+            
+            for (String productName : activityProducts) {
+                if (productRatings.containsKey(productName)) {
+                    List<Rating> ratings = productRatings.get(productName);
+                    if (!ratings.isEmpty()) {
+                        totalStars += ratings.stream().mapToInt(r -> r.stars).sum();
+                        ratingCount += ratings.size();
+                    }
+                }
+            }
+            
+            if (ratingCount > 0) {
+                result.put(activity, (double) totalStars / ratingCount);
+            }
+        }
+        
+        return result;
     }
 
-    /**
-     * For each average star rating returns a list of
-     * the products that have such score.
-     *
-     * Ratings are sorted in descending order.
-     *
-     * @return the map linking the average stars to the list of products
-     */
-    public SortedMap<Double, List<String>> getProductsPerStars () {
-        return null;
+    public SortedMap<Double, List<String>> getProductsPerStars() {
+        SortedMap<Double, List<String>> result = new TreeMap<>(Comparator.reverseOrder());
+        
+        Map<String, Double> productAverageStars = new HashMap<>();
+        for (String productName : products.keySet()) {
+            double avgStars = getStarsOfProduct(productName);
+            if (avgStars > 0) {
+                productAverageStars.put(productName, avgStars);
+            }
+        }
+        
+        for (Map.Entry<String, Double> entry : productAverageStars.entrySet()) {
+            String productName = entry.getKey();
+            Double stars = entry.getValue();
+            
+            result.putIfAbsent(stars, new ArrayList<>());
+            result.get(stars).add(productName);
+        }
+        
+        for (List<String> productList : result.values()) {
+            Collections.sort(productList);
+        }
+        
+        return result;
     }
-
 }
